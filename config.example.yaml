@@ -1,0 +1,52 @@
+# oikb-proxy routing configuration — production example
+#
+# HOW IT WORKS
+#   Open WebUI fetches /openapi.json -> gets tools (get_sync_status, get_sync_history, trigger_sync)
+#   When the agent calls trigger_sync(identifier="alice-kb"), the proxy looks up "alice-kb"
+#   in the routes table, then forwards to the matching backend WITH THAT BACKEND'S api_key.
+#
+# AUTH MODEL
+#   OIKB_PROXY_API_KEY (env var)          — auth between Open WebUI and the proxy
+#   backend.api_key  (in this file)       — auth between proxy and each oikb daemon
+#
+#   The proxy NEVER forwards the incoming Authorization header to backends.
+#   Instead it uses the backend's own api_key for /sync and /history calls.
+#   /health calls to backends are unauthenticated (oikb leaves /health public).
+
+default_backend: null
+backend_timeout: 30
+
+# ── Backend definitions ──────────────────────────────────────────────────
+# Each backend is one oikb daemon container.
+#   url      — how the proxy reaches it (Docker network hostname)
+#   api_key  — that container's OIKB_API_KEY (NOT an Open WebUI key)
+backends:
+  - name: alice
+    url: http://oikb-alice:8080
+    api_key: oikb-daemon-key-alice
+
+  - name: bob
+    url: http://oikb-bob:8080
+    api_key: oikb-daemon-key-bob
+
+# ── Route table ──────────────────────────────────────────────────────────
+# Map KB IDs AND friendly names → backend.
+# The agent calls trigger_sync(identifier="...") and the proxy
+# looks up the identifier here.
+#
+# To add a new route:
+#   1. Create the oikb-<user> container with that user's API key
+#   2. Add a backend entry above
+#   3. Add entries below mapping kb-id and/or friendly name → backend
+#   4. POST /reload  (or restart the proxy)
+routes:
+  # ── Alice's knowledge bases ──
+  "alice-kb":
+    backend: alice
+
+  "08ebc7ee-bc1e-498e-9acb-92aac2ffb499":
+    backend: alice
+
+  # ── Bob's knowledge bases ──
+  "bob-kb":
+    backend: bob

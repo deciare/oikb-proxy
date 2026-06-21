@@ -1,0 +1,20 @@
+default_backend: null
+backend_timeout: 5
+
+backends:
+  - name: mock-alice
+    url: http://localhost:18081
+    api_key: mock-backend-key
+  - name: mock-bob
+    url: http://localhost:18082
+    api_key: mock-backend-key
+
+routes:
+  "airi-knowledge-base":
+    backend: mock-alice
+  "bob-kb":
+    backend: mock-bob
+  "abc123":
+    backend: mock-alice
+  "def456":
+    backend: mock-bob

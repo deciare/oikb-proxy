@@ -1,0 +1,54 @@
+# docker-compose.yml snippet — add this service alongside your existing setup
+#
+# Key points:
+#   1. The proxy is a single container that Open WebUI talks to.
+#   2. Each per-user oikb daemon has its own OPEN_WEBUI_API_KEY.
+#   3. config.yaml maps KB IDs → oikb backend.
+#   4. Open WebUI's Tool Server URL points at oikb-proxy, not oikb directly.
+
+services:
+  # ── Per-user oikb daemons ──────────────────────────────────────────
+
+  oikb-alice:
+    image: ghcr.io/open-webui/oikb:latest
+    environment:
+      - OPEN_WEBUI_URL=http://open-webui:8080
+      - OPEN_WEBUI_API_KEY=${ALICE_OWUI_API_KEY}     # Iri's key
+      - OIKB_API_KEY=${OIKB_ALICE_API_KEY}
+      - LOG_FORMAT=json
+    volumes:
+      - "./volumes/oikb/oikb-alice.yaml:/data/.oikb.yaml:ro"
+      - "./volumes/open-terminal/home/knowledge-base:/data/airi-knowledge-base:ro"
+    command: daemon
+    networks:
+      - oikb-tier
+      - open-webui-tier
+    restart: unless-stopped
+
+  # oikb-bob: ...  (same pattern, different API key)
+  # oikb-charlie: ...  (same pattern, different API key)
+
+  # ── The proxy ──────────────────────────────────────────────────────
+
+  oikb-proxy:
+    build: ./oikb-proxy
+    # Or use a pre-built image once you've built it
+    environment:
+      - OIKB_PROXY_API_KEY=${OIKB_PROXY_API_KEY}    # auth between OWUI and proxy
+    volumes:
+      - "./volumes/oikb-proxy/config.yaml:/data/config.yaml:ro"
+    ports:
+      - "18080:8080"
+    networks:
+      - oikb-tier
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 5s
+
+networks:
+  oikb-tier:
+    driver: bridge
+  open-webui-tier:
+    driver: bridge
