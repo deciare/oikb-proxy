@@ -150,3 +150,7 @@ oikb-proxy/
 ├── mock_backend.py            # Mock oikb servers for testing
 └── test_proxy.py              # Test suite
 ```
+
+## AI Use Disclosure
+
+This project is developed with AI assistance.
